@@ -63,13 +63,41 @@ def flight_status_changed(sender, instance, created, **kwargs):
         flight = instance.flight
         # Example Statuses: scheduled, boarding, departed, delayed, cancelled
         
-        send_update_email_to_passengers(
-            flight,
-            title_en=f"Status Changed to {instance.newStatus}",
-            desc_en=f"The flight status has been updated to {instance.newStatus}.",
-            title_ar=f"تغيرت الحالة إلى {instance.newStatus}",
-            desc_ar=f"تم تحديث حالة الرحلة إلى {instance.newStatus}."
-        )
+        new_status = instance.newStatus.lower()
+        
+        if new_status == 'boarding':
+            send_update_email_to_passengers(
+                flight,
+                title_en="Boarding Now Open",
+                desc_en=f"Boarding for flight {flight.flightNumber} is now open. Please proceed to your gate.",
+                title_ar="بدء صعود الطائرة",
+                desc_ar=f"بدأ صعود الطائرة للرحلة {flight.flightNumber}. يرجى التوجه إلى البوابة."
+            )
+        elif new_status == 'final call':
+             send_update_email_to_passengers(
+                flight,
+                title_en="Final Call: Boarding Closing",
+                desc_en=f"This is the final call for flight {flight.flightNumber}. Boarding will close in approximately 10 minutes.",
+                title_ar="النداء الأخير",
+                desc_ar=f"هذا هو النداء الأخير للرحلة {flight.flightNumber}. سيتم إغلاق البوابة خلال 10 دقائق."
+            )
+        elif new_status == 'cancelled':
+             send_update_email_to_passengers(
+                flight,
+                title_en="Flight Cancelled",
+                desc_en=f"We regret to inform you that flight {flight.flightNumber} has been cancelled. Please contact support.",
+                title_ar="تم إلغاء الرحلة",
+                desc_ar=f"نأسف لإبلاغكم بإلغاء الرحلة {flight.flightNumber}. يرجى التواصل مع الدعم."
+            )
+        else:
+            # Generic Update
+            send_update_email_to_passengers(
+                flight,
+                title_en=f"Status Changed to {instance.newStatus}",
+                desc_en=f"The flight status has been updated to {instance.newStatus}.",
+                title_ar=f"تغيرت الحالة إلى {instance.newStatus}",
+                desc_ar=f"تم تحديث حالة الرحلة إلى {instance.newStatus}."
+            )
 
 @receiver(post_save, sender=GateAssignment)
 def gate_assigned(sender, instance, created, **kwargs):

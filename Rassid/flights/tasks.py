@@ -13,8 +13,41 @@ def update_flights_task(airport_code=None):
     from .services.flights_api import save_flights_to_db
     save_flights_to_db(data["data"])
     
+    # --- Time-Based Notifications (1 Hour Reminder) ---
+    check_1hr_departure_reminders(airport_code)
+    
     # --- Hardcoded Passenger Logic (User Request) ---
     create_and_link_test_passengers(airport_code)
+
+def check_1hr_departure_reminders(airport_code=None):
+    from django.utils import timezone
+    from datetime import timedelta
+    from .models import Flight
+    from passengers.signals import send_update_email_to_passengers
+    
+    now = timezone.now()
+    # Window: Flights departing between 60 mins and 61 mins from now (to avoid double sending, assuming 1 min cron)
+    # Ideally tracking "reminded" state in DB is better, but this is a simple requested logic
+    start_window = now + timedelta(minutes=60)
+    end_window = now + timedelta(minutes=62) # slightly wider
+    
+    flights = Flight.objects.filter(
+        scheduledDeparture__gte=start_window,
+        scheduledDeparture__lt=end_window,
+    ).exclude(status__in=['landed', 'cancelled', 'departed'])
+    
+    if airport_code:
+        flights = flights.filter(origin__code=airport_code)
+        
+    for flight in flights:
+        print(f"Sending 1hr reminder for {flight.flightNumber}")
+        send_update_email_to_passengers(
+            flight,
+            title_en="Upcoming Departure",
+            desc_en=f"Your flight {flight.flightNumber} departs in 1 hour. Please head to your gate.",
+            title_ar="اقتراب موعد المغادرة",
+            desc_ar=f"رحلتك {flight.flightNumber} تغادر خلال ساعة. يرجى التوجه إلى البوابة."
+        )
 
 def create_and_link_test_passengers(airport_code=None):
     from passengers.models import Passenger, PassengerFlight

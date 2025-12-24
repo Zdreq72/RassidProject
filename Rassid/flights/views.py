@@ -48,10 +48,14 @@ def flights_list(request):
     
     cutoff_time = timezone.now() - timezone.timedelta(hours=1)
     
+    from django.db.models import Prefetch
+    
     flights = Flight.objects.filter(
         origin_id=request.user.airport_id, 
         scheduledDeparture__gte=cutoff_time
-    ).exclude(status__iexact='landed').exclude(status__iexact='cancelled').order_by("scheduledDeparture")
+    ).exclude(status__iexact='landed').exclude(status__iexact='cancelled').prefetch_related(
+        Prefetch('gateassignment_set', queryset=GateAssignment.objects.order_by('-assignedAt'), to_attr='latest_gates')
+    ).order_by("scheduledDeparture")
     
     destinations = Airport.objects.filter(
         id__in=flights.values_list('destination_id', flat=True).distinct()
